@@ -5,6 +5,8 @@
 import json
 from datetime import datetime
 from pathlib import Path
+import sys
+import os
 from models.base_model import BaseModel
 from services.file.file_service import FileService
 from utils.helpers.logger import log_error, log_info, log_warning
@@ -157,11 +159,22 @@ class SceneModel(BaseModel):
             str: 默认保存目录路径
         """
         default_dir = self.config.get("paths", {}).get("output", "output")
-        if not Path(default_dir).is_absolute():
+        
+        # 在PyInstaller打包环境中，获取可执行文件所在目录
+        if hasattr(sys, '_MEIPASS'):
+            # 使用可执行文件所在目录作为基础路径
+            exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+            default_dir = os.path.join(exe_dir, default_dir)
+        # 优先使用配置中的app_root（非打包环境）
+        elif "app_root" in self.config:
+            app_root = self.config["app_root"]
+            default_dir = str(Path(app_root) / default_dir)
+        elif not Path(default_dir).is_absolute():
             # 获取应用程序根目录（src的父目录）
             app_root = Path(__file__).parent.parent.parent.parent
             default_dir = str(app_root / default_dir)
         
+        # 确保目录存在
         Path(default_dir).mkdir(parents=True, exist_ok=True)
         return default_dir
     

@@ -12,28 +12,33 @@ from utils.helpers.logger import log_error
 
 from models.scene.scene_model import SceneModel
 from models.resource.resource_model import ResourceModel
+from models.project.project_model import ProjectModel
 from views.screens.main_view import MainView
 from services.media.media_service import MediaService
 from controllers.handlers.resource_handler import ResourceHandler
 
 
 class AppController:
-    """应用控制器，负责协调模型和视图"""
+    """应用程序控制器，负责管理应用程序的生命周期和核心功能"""
     
     def __init__(self, config=None):
-        """初始化应用控制器
+        """初始化应用程序控制器
         
         Args:
             config: 应用程序配置
         """
         self.config = config or {}
         
-        # 初始化模型
-        self.scene_model = SceneModel(self.config)
-        self.resource_model = ResourceModel(self.config)
+        # 从配置中获取应用程序根目录
+        self.app_root = self.config.get('app_root')
         
-        # 设置资源模型的错误回调函数
-        self.resource_model.set_error_callback(self._show_error_message)
+        # 初始化各个模型
+        self.project_model = ProjectModel(config=self.config)
+        
+        # 初始化资源模型时传递包含app_root的配置
+        self.resource_model = ResourceModel(config=self.config)
+        
+        self.scene_model = SceneModel(config=self.config)
         
         # 初始化视图
         self.view = MainView(self.config)
@@ -49,8 +54,24 @@ class AppController:
         self.save_warning_shown = False
         self.initialized = False
         
+        # 项目状态
+        self.current_project = None
+        
+        # 设置资源模型的错误回调函数
+        self.resource_model.set_error_callback(self._show_error_message)
+        
         # 初始化资源
         self.init_resources()
+    
+    def _initialize_resources(self):
+        """初始化应用程序资源"""
+        try:
+            # 初始化资源模型
+            log_debug("正在初始化资源模型")
+            log_info(f"资源模型初始化完成，资源路径: {self.resource_model.resource_path}")
+            log_info(f"应用程序根目录: {self.app_root}")
+        except Exception as e:
+            log_error(f"初始化资源失败: {str(e)}")
     
     def _show_error_message(self, error_msg):
         """显示错误消息

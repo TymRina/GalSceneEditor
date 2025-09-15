@@ -24,13 +24,26 @@ class ResourceModel(BaseModel):
         # 获取资源路径配置
         resource_path_config = self.config.get("paths", {}).get("resources", "resources")
         
-        # 如果是相对路径，则相对于应用程序根目录
-        if not Path(resource_path_config).is_absolute():
-            # 获取应用程序根目录（src的父目录）
-            app_root = Path(__file__).parent.parent.parent.parent
-            self.resource_path = str(app_root / resource_path_config)
+        # 优先使用从main.py传递的app_root路径
+        if "app_root" in self.config:
+            app_root = self.config["app_root"]
+            self.resource_path = str(Path(app_root) / resource_path_config)
         else:
-            self.resource_path = resource_path_config
+            # 如果是相对路径，则相对于应用程序根目录
+            if not Path(resource_path_config).is_absolute():
+                # 获取应用程序根目录（src的父目录）
+                app_root = Path(__file__).parent.parent.parent.parent
+                self.resource_path = str(app_root / resource_path_config)
+            else:
+                self.resource_path = resource_path_config
+        
+        # 确保资源目录存在
+        resource_dir = Path(self.resource_path)
+        if not resource_dir.exists():
+            try:
+                resource_dir.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                log_error(f"无法创建资源目录: {str(e)}")
         
         self.error_callback = None
     
